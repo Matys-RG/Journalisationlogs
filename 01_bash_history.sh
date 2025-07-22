@@ -27,7 +27,6 @@ configure_secure_bash_history() {
     echo "[2/2] Configuration de l'historique Bash de l'utilisateur $(whoami)"
 
 if ! grep -q "$HISTORY_FILE" /etc/profile.d/history.sh 2>/dev/null; then
-    if [ "$(id -u)" -eq 0 ]; then
 cat <<EOF >> /etc/profile.d/history.sh
     echo "Chargement profile.d/history.sh OK"
     export HISTFILE="$HISTORY_FILE"
@@ -36,12 +35,8 @@ cat <<EOF >> /etc/profile.d/history.sh
     export HISTFILESIZE=20000
     export HISTCONTROL=ignoredups
     shopt -s histappend
-    export PROMPT_COMMAND='history -a; history -n'
+    export PROMPT_COMMAND='history -a; history -n; logger -p local1.notice -t bash -i -- "$(date "+%F %T") $(whoami)@$(hostname):$(tty): $(history 1 | sed "s/^[ ]*[0-9]\+[ ]*//")"'
 EOF
-    else
-        # Cas utilisateur standard → logger vers rsyslog
-export PROMPT_COMMAND='logger -p local1.notice -t bash -i -- "$(date "+%F %T") $(whoami)@$(hostname):$(tty): $(history 1 | sed "s/^[ ]*[0-9]\+[ ]*//")"'
-    fi
 fi
     
     chmod 644 /etc/profile.d/history.sh
