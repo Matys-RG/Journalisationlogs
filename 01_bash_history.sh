@@ -88,11 +88,3 @@ if ! grep -Fxq "[ -f /etc/profile.d/history.sh ]" "$ROOT_BASHPROFILE"; then
     echo "[ -f /etc/profile.d/history.sh ]" >> "$ROOT_BASHPROFILE"
 fi
 }
-
-configure_rsyslog() {
-    echo "local1.* /var/log/logger.log" >> /etc/rsyslog.d/logger.conf
-    touch /var/log/logger.log
-    chown syslog:adm /var/log/logger.log
-    chmod 640 /var/log/logger.log
-    systemctl restart rsyslog
-}
