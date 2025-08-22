@@ -1,8 +1,5 @@
 #!/bin/bash
 
-## Récuperer les logs user et root avec auditd
-
-
 set -e
 
 Required_Version="2.6.5"
