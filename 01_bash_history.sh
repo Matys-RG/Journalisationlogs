@@ -48,14 +48,12 @@ fi
     chmod 600 "$HISTORY_FILE"
     
     if ! command -v chattr &>/dev/null; then
-        if [[ "$DISTRO" == "debian" || "$DISTRO" == "ubuntu" ]]; then
+        if [[ "$paquet" == "apt" ]]; then
             apt install -y e2fsprogs
-        elif [[ "$DISTRO" == "centos" || "$DISTRO" == "rhel" ]]; then
-            if command -v dnf &>/dev/null; then
-                dnf install -y e2fsprogs
-            else
-                yum install -y e2fsprogs
-            fi
+        elif [[ "$paquet" == "yum" ]]; then
+            yum install -y e2fsprogs
+        elif [[ "$paquet" == "dnf" ]]; then
+            dnf install -y e2fsprogs
         fi
     fi
 
