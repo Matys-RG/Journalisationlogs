@@ -1,68 +1,76 @@
 #!/bin/bash
 
+## Récuperer les logs user et root avec auditd
+
+
 set -e
 
-SSHD_CONFIG="/etc/ssh/sshd_config"
-LOG_FILE="/var/log/secure"
-RSYSLOG_CONF="/etc/rsyslog.conf"
+Required_Version="2.6.5"
 
-install_sshd(){
-echo "[1/4] Installation de sshd"
-if ! command -v sshd >/dev/null; then
-    echo "Serveur SSH absent, tentative d'installation..."
-    
-    if [[ "$paquet" == "apt" ]]; then
-        apt install -y openssh-server
-    elif [[ "$paquet" == "dnf" ]]; then
-        dnf install -y openssh-server
-    elif [[ "$paquet" == "yum" ]]; then
-        yum install -y openssh-server
+check_gestionnaire_paquet() {
+while true; do
+    read -p "Quel gestionnaire de paquets utilisez-vous ? ( apt, yum, dnf ) :" paquet
+    if [[ "$paquet" == "apt" ]] || [[ "$paquet" == "yum" ]] || [[ "$paquet" == "dnf" ]]; then
+        break
     else
-        echo "Aucun gestionnaire de paquets compatible trouvé."
-        exit 1
+        echo "Veuillez entrer un gestionnaire de paquet valide"
     fi
+done
+}
+
+maj() {
+if [[ "$paquet" == "apt" ]]; then
+    apt update && apt upgrade
+elif [[ "$paquet" == "yum" ]]; then
+    yum makecache
+    yum update -y
+elif [[ "$paquet" == "dnf" ]]; then
+    dnf makecache
+    dnf update -y
+fi
+}
+
+install_auditd() {
+echo "[1/4] Installation d'auditd"
+if command -v auditctl &>/dev/null; then
+    echo "Auditd est déjà installé"
 else
-    echo "sshd est déjà présent"
+    echo "Auditd n'est pas installé. Installation en cours..."
+    if [[ "$paquet" == "apt" ]]; then
+        apt update && apt install auditd -y
+    elif [[ "$paquet" == "yum" ]]; then
+        yum makecache fast && yum install -y auditd
+    elif [[ "$paquet" == "dnf" ]]; then
+        dnf makecache
+        dnf update && dnf install -y auditd
+    fi
 fi
 }
 
-configure_sshd(){
-echo "[1/4] Configuration de sshd pour LogLevel VERBOSE"
-if grep -q "^#*LogLevel" "$SSHD_CONFIG"; then
-    sed -i 's/^#*LogLevel.*/LogLevel VERBOSE/' "$SSHD_CONFIG"
-else
-    echo "LogLevel VERBOSE" >> "$SSHD_CONFIG"
+
+check_auditctl_version() {
+echo "[2/4] Vérification de la version d'auditctl"
+local Current_Version=$( ( auditctl -v | awk '{print $NF}' ) )
+if [[ "$(printf '%s\n' "$Required_Version" "$Current_Version" | sort -V | head -n1)" != "$Required_Version" ]]; then
+    if [[ "$paquet" == "apt" ]]; then
+        apt update
+    elif [[ "$paquet" == "yum" ]]; then
+            yum makecache
+            yum update -y
+    elif [[ "$paquet" == "dnf" ]]; then
+        dnf makecache
+        dnf update -y
+    fi
 fi
 
-echo "Redémarrage de sshd..."
-systemctl restart ssh
+echo "Version requise : $Required_Version | Version actuelle : $Current_Version"
 }
 
-create_rsyslog_conf(){
-echo "[2/4] Création d’un fichier de configuration rsyslog dédié à SSH"
-echo "Création de la configuration rsyslog pour SSH dans $RSYSLOG_CONF"
 
-if ! grep -q "^authpriv.*[[:space:]]\+$LOG_FILE" "$RSYSLOG_CONF"; then
-    echo "Ajout de la configuration rsyslog pour SSH..."
-    cat <<EOF >> "$RSYSLOG_CONF"
-authpriv.*    $LOG_FILE
-
-EOF
-else
-    echo "La configuration rsyslog SSH existe déjà dans $RSYSLOG_CONF"
-fi
-}
-
-comment_rsyslog_template(){
-echo "[3/4] Commenter la ligne ActionFileDefaultTemplate si elle est active"
-if grep -q "^\$ActionFileDefaultTemplate" "$RSYSLOG_CONF"; then
-    sed -i 's/^\$ActionFileDefaultTemplate/#$ActionFileDefaultTemplate/' "$RSYSLOG_CONF"
-    echo "Rsyslog commenté dans $RSYSLOG_CONF"
-fi
-}
-
-create_log_file(){
-echo "[4/4] S'assurer que le fichier log existe"
-touch "$LOG_FILE"
-chown syslog:adm "$LOG_FILE"
+enable_auditd() {
+-a always,exit -F arch=b64 -S execve -F auid>=1000 -F auid!=4294967295 -k user_commands
+-a always,exit -F arch=b64 -S execve -F euid=0 -k root_commands
+echo "[3/4] Activation d'auditd"
+systemctl enable auditd
+systemctl start auditd
 }
