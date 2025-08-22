@@ -20,7 +20,6 @@ maj
 install_auditd
 check_auditctl_version
 enable_auditd
-apply_rules
 
 echo "Redémarrage de auditd"
 if ! augenrules --load > /dev/null 2>&1; then
@@ -36,7 +35,6 @@ configure_bash_repertoire
 configure_bash_file
 configure_secure_bash_history
 configure_root_history
-configure_rsyslog
 
 #Rsyslog part
 echo "Configuration de sshd et journalisation SSH avec rsyslog..."

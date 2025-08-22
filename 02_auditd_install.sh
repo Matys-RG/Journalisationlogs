@@ -1,65 +1,11 @@
 #!/bin/bash
 
+## Récuperer les logs user et root avec auditd
+
+
 set -e
 
 Required_Version="2.6.5"
-
-#Aller chercher le gestionnaire de paquet dans /var/bin/ au lieu de la distribution
-
-# check_distro() {
-# echo "[1/5] Détection de la distribution"
-# if [ -f /etc/os-release ]; then
-#     DISTRO=$( ( . /etc/os-release && echo "$ID" ) )
-#     echo "Distibution trouvée."
-# else
-#     echo "Distribution non trouvée."
-#     exit 1
-# fi
-
-# if [[ "$DISTRO" != "debian" && "$DISTRO" != "ubuntu" && "$DISTRO" != "centos" && "$DISTRO" != "rhel" ]]; then
-#     echo "Mauvaise distribution"
-#     exit 1
-# else
-#     echo "Distribution conforme"
-# fi
-# }
-
-# install_auditctl() {
-# echo "[2/5] Installation d'auditctl"
-# if command -v auditctl &>/dev/null; then
-#     echo "Auditctl est déjà installé"
-# else
-#     echo "Auditctl n'est pas installé. Installation en cours..."
-#     if [[ "$DISTRO" == "debian" || "$DISTRO" == "ubuntu" ]]; then
-#         apt update && apt install auditctl -y
-#     elif [[ "$DISTRO" == "centos" || "$DISTRO" == "rhel" ]]; then
-#         if command -v dnf &>/dev/null; then
-#             dnf makecache
-#             dnf update && dnf install -y audit
-#         else
-#             yum makecache fast && yum install -y audit
-#         fi
-#     fi
-# fi
-# }
-
-# check_auditctl_version() {
-# echo "[3/5] Vérification de la version d'auditctl"
-# local Current_Version=$( ( auditctl -v | awk '{print $NF}' ) )
-# if [[ "$(printf '%s\n' "$Required_Version" "$Current_Version" | sort -V | head -n1)" != "$Required_Version" ]]; then
-#     if [[ "$DISTRO" == "debian" || "$DISTRO" == "ubuntu" ]]; then
-#         apt update
-#     elif [[ "$DISTRO" == "centos" || "$DISTRO" == "rhel" ]]; then
-#         if command -v dnf &>/dev/null; then
-#             dnf makecache
-#             dnf update -y
-#         else
-#             yum makecache
-#             yum update -y
-#         fi
-#     fi
-# fi
-# }
 
 check_gestionnaire_paquet() {
 while true; do
@@ -122,20 +68,9 @@ echo "Version requise : $Required_Version | Version actuelle : $Current_Version"
 
 
 enable_auditd() {
+-a always,exit -F arch=b64 -S execve -F auid>=1000 -F auid!=4294967295 -k user_commands
+-a always,exit -F arch=b64 -S execve -F euid=0 -k root_commands
 echo "[3/4] Activation d'auditd"
 systemctl enable auditd
 systemctl start auditd
-}
-
-apply_rules() {
-echo "[4/4] Application des règles de base..."
-# Voir quels fichiers systèmes critiques il faut surveiller
-cat <<EOF > /etc/audit/rules.d/basic.rules
--w /etc/sudoers -p wa -k sudoers_change
--w /etc/shadow -p wa -k shadow_file
--w /etc/pam.d/ -p wa -k pam_config
--w /etc/passwd -p wa -k passwd_changes
--a always,exit -F path=/bin -F perm=x -F auid>=1000 -F auid!=4294967295 -k bin_exec
-
-EOF
 }

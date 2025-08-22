@@ -1,5 +1,6 @@
 Faire un chmod+x index.sh avant de le lancer
 Le lancer en tant que root
+si les logs users ne se recuperent pas automatiquement, il faut faire : source /etc/profile.d/history.sh
 
 Log pour commandes user : sudo cat /var/log/logger.log
 Log pour commandes root : sudo cat /var/log/bash/root.history
